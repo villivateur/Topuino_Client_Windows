@@ -16,7 +16,7 @@ namespace Topuino_Client_Windows
             try
             {
                 HttpContent content = new FormUrlEncodedContent(data);
-                HttpResponseMessage response = await client.PostAsync("http://127.0.0.1:7766/putdata", content);
+                HttpResponseMessage response = await client.PostAsync("https://iot.vvzero.com/topuino/putdata", content);
                 response.EnsureSuccessStatusCode();
                 string responseBody = await response.Content.ReadAsStringAsync();
                 PublicCommResponse? respData = JsonConvert.DeserializeObject<PublicCommResponse>(responseBody);
