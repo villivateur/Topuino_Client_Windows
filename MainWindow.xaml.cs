@@ -6,6 +6,8 @@ using System.IO;
 using System.Net.NetworkInformation;
 using System.Collections.Generic;
 using System.Windows.Input;
+using System.Drawing;
+using System.Windows.Forms;
 using Newtonsoft.Json;
 
 namespace Topuino_Client_Windows
@@ -36,6 +38,8 @@ namespace Topuino_Client_Windows
 
             if (File.Exists("Config.json"))
             {
+                ShowInTaskbar = true;
+                Visibility = Visibility.Hidden;
                 LoadConfig();
             }
             else
@@ -43,7 +47,14 @@ namespace Topuino_Client_Windows
                 ComboBox_Disk0.SelectedIndex = 0;
                 ComboBox_Disk1.SelectedIndex = 0;
             }
+
+            trayIon.Icon = new Icon(@"Topuino.ico");
+            trayIon.Visible = true;
+            trayIon.Text = "Topuino";
+            trayIon.DoubleClick += TrayIcon_DoubleClick;
         }
+
+        private NotifyIcon trayIon = new NotifyIcon();
 
         private string sn = "";
         private List<DriveInfo> allDrives;
@@ -159,8 +170,8 @@ namespace Topuino_Client_Windows
 
         public void ShowErrorBox(string msg)
         {
-            MessageBox.Show(
-                Application.Current.MainWindow,
+            System.Windows.MessageBox.Show(
+                System.Windows.Application.Current.MainWindow,
                 msg,
                 "错误",
                 MessageBoxButton.OK,
@@ -177,7 +188,7 @@ namespace Topuino_Client_Windows
 
         private void StartRun()
         {
-            Mouse.OverrideCursor = Cursors.Wait;
+            Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             if (refreshThread != null)
             {
                 requestStop.Set();
@@ -217,6 +228,25 @@ namespace Topuino_Client_Windows
             ApplyConfig();
             SaveConfig();
             StartRun();
+        }
+
+        private void TrayIcon_DoubleClick(object? sender, EventArgs e)
+        {
+            Visibility = Visibility.Visible;
+        }
+
+        private void Button_Hide_Click(object sender, RoutedEventArgs e)
+        {
+            Visibility = Visibility.Hidden;
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (refreshThread != null)
+            {
+                requestStop.Set();
+                stopDone.WaitOne();
+            }
         }
     }
 }

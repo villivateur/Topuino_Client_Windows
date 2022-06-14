@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Topuino_Client_Windows"
         mc:Ignorable="d"
+        Closing="Window_Closing"
         Title="Topuino 客户端" Height="150" Width="400">
     <Grid>
         <Grid.RowDefinitions>
@@ -26,7 +27,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
             <Button Content="保存" Click="Button_Save_Click" Height="20" Width="40" />
             <Separator Width="10" Background="Transparent" />
-            <Button Content="隐藏" Height="20" Width="40" />
+            <Button Content="隐藏" Click="Button_Hide_Click" Height="20" Width="40" />
         </StackPanel>
     </Grid>
 </Window>
