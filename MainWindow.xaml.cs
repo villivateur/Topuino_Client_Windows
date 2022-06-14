@@ -105,7 +105,10 @@ namespace Topuino_Client_Windows
         private void Run()
         {
             PerformanceCounter cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            PerformanceCounter ramCounter = new PerformanceCounter("Memory", "% Committed Bytes In Use");
+            long ramAvailable = PerformanceInfo.GetPhysicalAvailableMemoryInMiB();
+            long ramTotal = PerformanceInfo.GetTotalMemoryInMiB();
+            long ramPercentFree = ramAvailable * 100 / ramTotal;
+            long ramPercentUsed = 100 - ramPercentFree;
             PerformanceCounter diskReadCounter = new PerformanceCounter("PhysicalDisk", "Disk Read Bytes/sec", "_Total");
             PerformanceCounter diskWriteCounter = new PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total");
             NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
@@ -138,9 +141,9 @@ namespace Topuino_Client_Windows
                 Dictionary<string, string> statusInfo = new Dictionary<string, string>();
                 statusInfo.Add("SN", sn);
                 statusInfo.Add("CPU_PERCENT", ((int)cpuCounter.NextValue()).ToString());
-                statusInfo.Add("MEM_PERCENT", ((int)ramCounter.NextValue()).ToString());
-                statusInfo.Add("DISK_PERCENT", ((int)((double)drive0.AvailableFreeSpace / (double)drive0.TotalSize * 100)).ToString());
-                statusInfo.Add("DISK1_PERCENT", ((int)((double)drive1.AvailableFreeSpace / (double)drive1.TotalSize * 100)).ToString());
+                statusInfo.Add("MEM_PERCENT", ((int)ramPercentUsed).ToString());
+                statusInfo.Add("DISK_PERCENT", ((int)((double)(drive0.TotalSize - drive0.AvailableFreeSpace) / drive0.TotalSize * 100)).ToString());
+                statusInfo.Add("DISK1_PERCENT", ((int)((double)(drive1.TotalSize - drive1.AvailableFreeSpace) / drive1.TotalSize * 100)).ToString());
                 statusInfo.Add("DISK_READ_RATE", ((int)diskReadCounter.NextValue()).ToString());
                 statusInfo.Add("DISK_WRITE_RATE", ((int)diskWriteCounter.NextValue()).ToString());
                 statusInfo.Add("NET_SENT_RATE", ((int)(netBytesSentAfter - netBytesSentBefore)).ToString());
