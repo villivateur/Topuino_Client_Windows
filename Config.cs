@@ -2,6 +2,7 @@
 {
     internal class Config
     {
+        public int mode = 0;
         public string sn = "";
         public string disk0 = "";
         public string disk1 = "";

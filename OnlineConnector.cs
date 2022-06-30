@@ -6,12 +6,12 @@ using System.Collections.Generic;
 
 namespace Topuino_Client_Windows
 {
-    internal class PublicComm
+    internal class OnlineConnector
     {
         private HttpClient client = new HttpClient();
         private int errorCount = 0;
 
-        public async void Post(Dictionary<string, string> data)
+        internal async void Post(Dictionary<string, string> data)
         {
             try
             {
@@ -19,7 +19,7 @@ namespace Topuino_Client_Windows
                 HttpResponseMessage response = await client.PostAsync("https://iot.vvzero.com/topuino/putdata", content);
                 response.EnsureSuccessStatusCode();
                 string responseBody = await response.Content.ReadAsStringAsync();
-                PublicCommResponse? respData = JsonConvert.DeserializeObject<PublicCommResponse>(responseBody);
+                OnlineConnectorResponse? respData = JsonConvert.DeserializeObject<OnlineConnectorResponse>(responseBody);
                 if (respData == null || respData.CODE != 0)
                 {
                     throw new Exception();
@@ -35,10 +35,15 @@ namespace Topuino_Client_Windows
                 }
             }
         }
+
+        internal void Dispose()
+        {
+            client.Dispose();
+        }
     }
 
-    internal class PublicCommResponse
+    internal class OnlineConnectorResponse
     {
-        public int CODE;
+        public int CODE = 0;
     }
 }

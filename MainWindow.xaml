@@ -6,28 +6,35 @@
         xmlns:local="clr-namespace:Topuino_Client_Windows"
         mc:Ignorable="d"
         Closing="Window_Closing"
-        Title="Topuino 客户端" Height="150" Width="400">
+        Title="Topuino 客户端" Height="180" Width="400">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+            <Label Content="运行模式：" VerticalAlignment="Center" />
+            <RadioButton x:Name="RadioButton_UsbMode" VerticalAlignment="Center" Margin="5,0" IsChecked="True">USB 模式</RadioButton>
+            <RadioButton x:Name="RadioButton_OnlineMode" VerticalAlignment="Center" Margin="5,0">在线模式</RadioButton>
+            <RadioButton x:Name="RadioButton_LocalMode" VerticalAlignment="Center" Margin="5,0" IsEnabled="False">本地模式</RadioButton>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
             <TextBlock Text="设备 SN：" VerticalAlignment="Center"/>
             <TextBox x:Name="TextBox_DeviceSn" Width="80" VerticalAlignment="Center" />
         </StackPanel>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
             <TextBlock Text="0 号磁盘：" VerticalAlignment="Center"/>
             <ComboBox x:Name="ComboBox_Disk0" Height="20" Width="60" VerticalAlignment="Center"/>
             <Separator Width="10" Background="Transparent" />
             <TextBlock Text="1 号磁盘：" VerticalAlignment="Center"/>
             <ComboBox x:Name="ComboBox_Disk1" Height="20" Width="60" VerticalAlignment="Center"/>
         </StackPanel>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
-            <Button Content="保存" Click="Button_Save_Click" Height="20" Width="40" />
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+            <Button Content="应用并保存" Click="Button_Save_Click" Height="25" Width="80" />
             <Separator Width="10" Background="Transparent" />
-            <Button Content="隐藏" Click="Button_Hide_Click" Height="20" Width="40" />
+            <Button Content="隐藏" Click="Button_Hide_Click" Height="25" Width="40" />
         </StackPanel>
     </Grid>
 </Window>

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Windows.Input;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 
 namespace Topuino_Client_Windows
@@ -44,6 +45,7 @@ namespace Topuino_Client_Windows
             }
             else
             {
+                RadioButton_UsbMode.IsChecked = true;
                 ComboBox_Disk0.SelectedIndex = 0;
                 ComboBox_Disk1.SelectedIndex = 0;
             }
@@ -56,37 +58,71 @@ namespace Topuino_Client_Windows
 
         private NotifyIcon trayIon = new NotifyIcon();
 
+        private int mode = 0;
         private string sn = "";
         private List<DriveInfo> allDrives;
-        private DriveInfo? drive0 = null;
-        private DriveInfo? drive1 = null;
+        private DriveInfo drive0;
+        private DriveInfo drive1;
 
-        private Config? initConfig = null;
+        private bool ready = false;
 
         private Thread? refreshThread = null;
 
         private ManualResetEvent requestStop = new ManualResetEvent(false);
         private ManualResetEvent stopDone = new ManualResetEvent(false);
 
+        private OnlineConnector? onlineClient = null;
+        private UsbConnector? usbClient = null;
+
         private void LoadConfig()
         {
             try
             {
-                initConfig = JsonConvert.DeserializeObject<Config>(File.ReadAllText("Config.json"));
+                Config? initConfig = JsonConvert.DeserializeObject<Config>(File.ReadAllText("Config.json"));
                 if (initConfig == null)
                 {
                     throw new Exception();
                 }
 
+                switch (initConfig.mode)
+                {
+                    case 0:
+                        RadioButton_UsbMode.IsChecked = true;
+                        break;
+                    case 1:
+                        RadioButton_OnlineMode.IsChecked = true;
+                        break;
+                    case 2:
+                        RadioButton_LocalMode.IsChecked = true;
+                        break;
+                    default:
+                        RadioButton_UsbMode.IsChecked = true;
+                        break;
+                }
+
                 // check if drivers missing
+                bool disk0Found = false;
+                bool disk1Fount = false;
                 foreach (DriveInfo drive in allDrives)
                 {
-                    if (drive.Name != initConfig.disk0 && drive.Name != initConfig.disk1)
+                    if (drive.Name == initConfig.disk0)
                     {
-                        initConfig.disk0 = drive.Name;
-                        initConfig.disk1 = drive.Name;
-                        break;
+                        disk0Found = true;
                     }
+                    if (drive.Name == initConfig.disk1)
+                    {
+                        disk1Fount = true;
+                    }
+                }
+                if (!disk0Found)
+                {
+                    ShowErrorBox("找不到磁盘0，已切换为默认磁盘");
+                    initConfig.disk0 = allDrives[0].Name;
+                }
+                if (!disk1Fount)
+                {
+                    ShowErrorBox("找不到磁盘1，已切换为默认磁盘");
+                    initConfig.disk1 = allDrives[0].Name;
                 }
 
                 for (int i = 0; i < allDrives.Count; i++)
@@ -148,25 +184,77 @@ namespace Topuino_Client_Windows
                     netBytesReceiveAfter += ni.GetIPStatistics().BytesReceived;
                 }
 
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                Dictionary<string, string> statusInfo = new Dictionary<string, string>();
-                statusInfo.Add("SN", sn);
-                statusInfo.Add("CPU_PERCENT", ((int)cpuCounter.NextValue()).ToString());
-                statusInfo.Add("MEM_PERCENT", ((int)ramPercentUsed).ToString());
-                statusInfo.Add("DISK_PERCENT", ((int)((double)(drive0.TotalSize - drive0.AvailableFreeSpace) / drive0.TotalSize * 100)).ToString());
-                statusInfo.Add("DISK1_PERCENT", ((int)((double)(drive1.TotalSize - drive1.AvailableFreeSpace) / drive1.TotalSize * 100)).ToString());
-                statusInfo.Add("DISK_READ_RATE", ((int)diskReadCounter.NextValue()).ToString());
-                statusInfo.Add("DISK_WRITE_RATE", ((int)diskWriteCounter.NextValue()).ToString());
-                statusInfo.Add("NET_SENT_RATE", ((int)(netBytesSentAfter - netBytesSentBefore)).ToString());
-                statusInfo.Add("NET_RECV_RATE", ((int)(netBytesSentAfter - netBytesSentBefore)).ToString());
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                MonitorData data = new MonitorData
+                {
+                    cpuPercent = (byte)cpuCounter.NextValue(),
+                    memPercent = (byte)ramPercentUsed,
+                    disk0Percent = (byte)((double)(drive0.TotalSize - drive0.AvailableFreeSpace) / drive0.TotalSize * 100),
+                    disk1Percent = (byte)((double)(drive1.TotalSize - drive1.AvailableFreeSpace) / drive1.TotalSize * 100),
+                    diskReadRate = (uint)diskReadCounter.NextValue(),
+                    diskWriteRate = (uint)diskWriteCounter.NextValue(),
+                    netSentRate = (uint)(netBytesSentAfter - netBytesSentBefore),
+                    netRecvRate = (uint)(netBytesReceiveAfter - netBytesReceiveBefore),
+                };
 
-                PublicComm connection = new PublicComm();
-                connection.Post(statusInfo);
+                switch (mode)
+                {
+                    case 0:
+                        UsbRun(data);
+                        break;
+                    case 1:
+                        OnlineRun(data);
+                        break;
+                    case 2:
+                        OfflineRun(data);
+                        break;
+                    default:
+                        break;
+                }
             }
 
             stopDone.Set();
         }
+
+        private void UsbRun(MonitorData data)
+        {
+            int size = Marshal.SizeOf(data);
+            byte[] bin = new byte[size];
+            IntPtr ptr = IntPtr.Zero;
+            try
+            {
+                ptr = Marshal.AllocHGlobal(size);
+                Marshal.StructureToPtr(data, ptr, true);
+                Marshal.Copy(ptr, bin, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+
+            usbClient.Send(bin);
+        }
+
+        private void OnlineRun(MonitorData data)
+        {
+            Dictionary<string, string> statusInfo = new Dictionary<string, string>();
+            statusInfo.Add("SN", sn);
+            statusInfo.Add("CPU_PERCENT", data.cpuPercent.ToString());
+            statusInfo.Add("MEM_PERCENT", data.memPercent.ToString());
+            statusInfo.Add("DISK_PERCENT", data.disk0Percent.ToString());
+            statusInfo.Add("DISK1_PERCENT", data.disk1Percent.ToString());
+            statusInfo.Add("DISK_READ_RATE", data.diskReadRate.ToString());
+            statusInfo.Add("DISK_WRITE_RATE", data.diskWriteRate.ToString());
+            statusInfo.Add("NET_SENT_RATE", data.netSentRate.ToString());
+            statusInfo.Add("NET_RECV_RATE", data.netRecvRate.ToString());
+
+            onlineClient.Post(statusInfo);
+        }
+
+        private void OfflineRun(MonitorData data)
+        {
+
+        }
+
 
         public void ShowErrorBox(string msg)
         {
@@ -181,53 +269,93 @@ namespace Topuino_Client_Windows
 
         private void ApplyConfig()
         {
-            sn = TextBox_DeviceSn.Text;
-            drive0 = ComboBox_Disk0.SelectedItem as DriveInfo;
-            drive1 = ComboBox_Disk1.SelectedItem as DriveInfo;
+            try
+            {
+                if (RadioButton_UsbMode.IsChecked == true)
+                {
+                    mode = 0;
+                    usbClient = new UsbConnector();
+                }
+                else if (RadioButton_OnlineMode.IsChecked == true)
+                {
+                    mode = 1;
+                    onlineClient = new OnlineConnector();
+                }
+                else if (RadioButton_LocalMode.IsChecked == true)
+                {
+                    mode = 2;
+                    // TODO
+                }
+                sn = TextBox_DeviceSn.Text;
+
+                drive0 = ComboBox_Disk0.SelectedItem as DriveInfo;
+                drive1 = ComboBox_Disk1.SelectedItem as DriveInfo;
+
+                ready = true;
+            }
+            catch (Exception e)
+            {
+                ready = false;
+                ShowErrorBox(e.Message);
+            }
         }
 
         private void StartRun()
         {
-            Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            if (!ready)
+            {
+                return;
+            }
+
+            if (!drive0.IsReady || !drive1.IsReady)
+            {
+                ShowErrorBox("磁盘未就绪");
+                return;
+            }
+
+            refreshThread = new Thread(Run);
+            refreshThread.Start();
+        }
+
+        private void StopRun()
+        {
             if (refreshThread != null)
             {
                 requestStop.Set();
                 stopDone.WaitOne();
             }
 
+            refreshThread = null;
+
             requestStop.Reset();
             stopDone.Reset();
-
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-            if (!drive0.IsReady || !drive1.IsReady)
-            {
-                ShowErrorBox("磁盘未就绪");
-                return;
-            }
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-
-            Mouse.OverrideCursor = null;
-
-            refreshThread = new Thread(Run);
-            refreshThread.Start();
         }
 
         private async void SaveConfig()
         {
             Config newConfig = new Config();
+            newConfig.mode = mode;
             newConfig.sn = sn;
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
             newConfig.disk0 = drive0.Name;
             newConfig.disk1 = drive1.Name;
             await File.WriteAllTextAsync("Config.json", JsonConvert.SerializeObject(newConfig, Formatting.Indented));
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
+        }
+
+        private void ResetConnectors()
+        {
+            usbClient?.Dispose();
+            onlineClient?.Dispose();
         }
 
         private void Button_Save_Click(object sender, RoutedEventArgs e)
         {
+            Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            StopRun();
+            ResetConnectors();
             ApplyConfig();
             SaveConfig();
             StartRun();
+            Mouse.OverrideCursor = null;
         }
 
         private void TrayIcon_DoubleClick(object? sender, EventArgs e)
@@ -242,11 +370,8 @@ namespace Topuino_Client_Windows
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (refreshThread != null)
-            {
-                requestStop.Set();
-                stopDone.WaitOne();
-            }
+            StopRun();
+            ResetConnectors();
         }
     }
 }
