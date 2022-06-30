@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "TopuinoClient"
-#define MyAppVersion "0.1"
+#define MyAppVersion "0.2"
 #define MyAppPublisher "VVZERO"
 #define MyAppURL "https://iot.vvzero.com"
 #define MyAppExeName "Topuino_Client_Windows.exe"
