@@ -22,6 +22,11 @@ namespace Topuino_Client_Windows
         {
             InitializeComponent();
 
+            trayIon.Icon = new Icon(@"Topuino.ico");
+            trayIon.Visible = true;
+            trayIon.Text = "Topuino";
+            trayIon.DoubleClick += TrayIcon_DoubleClick;
+
             allDrives = new List<DriveInfo>();
             DriveInfo[] drives = DriveInfo.GetDrives();
             foreach (DriveInfo drive in drives)
@@ -42,6 +47,8 @@ namespace Topuino_Client_Windows
                 ShowInTaskbar = true;
                 Visibility = Visibility.Hidden;
                 LoadConfig();
+                ApplyConfig();
+                StartRun();
             }
             else
             {
@@ -49,11 +56,6 @@ namespace Topuino_Client_Windows
                 ComboBox_Disk0.SelectedIndex = 0;
                 ComboBox_Disk1.SelectedIndex = 0;
             }
-
-            trayIon.Icon = new Icon(@"Topuino.ico");
-            trayIon.Visible = true;
-            trayIon.Text = "Topuino";
-            trayIon.DoubleClick += TrayIcon_DoubleClick;
         }
 
         private NotifyIcon trayIon = new NotifyIcon();
@@ -64,12 +66,10 @@ namespace Topuino_Client_Windows
         private DriveInfo drive0;
         private DriveInfo drive1;
 
-        private bool ready = false;
-
         private Thread? refreshThread = null;
 
-        private ManualResetEvent requestStop = new ManualResetEvent(false);
-        private ManualResetEvent stopDone = new ManualResetEvent(false);
+        private ManualResetEvent requestStopEvent = new ManualResetEvent(false);
+        private ManualResetEvent stopDoneEvent = new ManualResetEvent(false);
 
         private OnlineConnector? onlineClient = null;
         private UsbConnector? usbClient = null;
@@ -144,9 +144,6 @@ namespace Topuino_Client_Windows
                 ShowErrorBox("初始参数加载错误，请检查配置文件");
                 Close();
             }
-
-            ApplyConfig();
-            StartRun();
         }
 
         private void Run()
@@ -164,7 +161,7 @@ namespace Topuino_Client_Windows
             long netBytesReceiveBefore;
             long netBytesReceiveAfter;
 
-            while (!requestStop.WaitOne(0))
+            while (!requestStopEvent.WaitOne(0))
             {
                 netBytesSentBefore = 0;
                 netBytesSentAfter = 0;
@@ -205,18 +202,33 @@ namespace Topuino_Client_Windows
                         OnlineRun(data);
                         break;
                     case 2:
-                        OfflineRun(data);
+                        LocalRun(data);
                         break;
                     default:
                         break;
                 }
             }
 
-            stopDone.Set();
+            stopDoneEvent.Set();
         }
 
         private void UsbRun(MonitorData data)
         {
+            if (usbClient == null)
+            {
+                try
+                {
+                    usbClient = new UsbConnector();
+                    ShowConnected();
+                }
+                catch
+                {
+                    usbClient = null;
+                    ShowDisconnected();
+                    return;
+                }
+            }
+
             int size = Marshal.SizeOf(data);
             byte[] bin = new byte[size];
             IntPtr ptr = IntPtr.Zero;
@@ -231,11 +243,25 @@ namespace Topuino_Client_Windows
                 Marshal.FreeHGlobal(ptr);
             }
 
-            usbClient.Send(bin);
+            try
+            {
+                usbClient.Send(bin);
+            }
+            catch
+            {
+                usbClient.Dispose();
+                usbClient = null;
+                ShowDisconnected();
+            }
         }
 
         private void OnlineRun(MonitorData data)
         {
+            if (onlineClient == null)
+            {
+                onlineClient = new OnlineConnector();
+            }
+
             Dictionary<string, string> statusInfo = new Dictionary<string, string>();
             statusInfo.Add("SN", sn);
             statusInfo.Add("CPU_PERCENT", data.cpuPercent.ToString());
@@ -247,10 +273,20 @@ namespace Topuino_Client_Windows
             statusInfo.Add("NET_SENT_RATE", data.netSentRate.ToString());
             statusInfo.Add("NET_RECV_RATE", data.netRecvRate.ToString());
 
-            onlineClient.Post(statusInfo);
+            try
+            {
+                onlineClient.Post(statusInfo).Wait();
+                ShowConnected();
+            }
+            catch
+            {
+                onlineClient.Dispose();
+                onlineClient = null;
+                ShowDisconnected();
+            }
         }
 
-        private void OfflineRun(MonitorData data)
+        private void LocalRun(MonitorData data)
         {
 
         }
@@ -274,39 +310,28 @@ namespace Topuino_Client_Windows
                 if (RadioButton_UsbMode.IsChecked == true)
                 {
                     mode = 0;
-                    usbClient = new UsbConnector();
                 }
                 else if (RadioButton_OnlineMode.IsChecked == true)
                 {
                     mode = 1;
-                    onlineClient = new OnlineConnector();
                 }
                 else if (RadioButton_LocalMode.IsChecked == true)
                 {
                     mode = 2;
-                    // TODO
                 }
                 sn = TextBox_DeviceSn.Text;
 
                 drive0 = ComboBox_Disk0.SelectedItem as DriveInfo;
                 drive1 = ComboBox_Disk1.SelectedItem as DriveInfo;
-
-                ready = true;
             }
             catch (Exception e)
             {
-                ready = false;
                 ShowErrorBox(e.Message);
             }
         }
 
         private void StartRun()
         {
-            if (!ready)
-            {
-                return;
-            }
-
             if (!drive0.IsReady || !drive1.IsReady)
             {
                 ShowErrorBox("磁盘未就绪");
@@ -321,14 +346,14 @@ namespace Topuino_Client_Windows
         {
             if (refreshThread != null)
             {
-                requestStop.Set();
-                stopDone.WaitOne();
+                requestStopEvent.Set();
+                stopDoneEvent.WaitOne();
             }
 
             refreshThread = null;
 
-            requestStop.Reset();
-            stopDone.Reset();
+            requestStopEvent.Reset();
+            stopDoneEvent.Reset();
         }
 
         private async void SaveConfig()
@@ -366,6 +391,32 @@ namespace Topuino_Client_Windows
         private void Button_Hide_Click(object sender, RoutedEventArgs e)
         {
             Visibility = Visibility.Hidden;
+        }
+
+        private void ShowConnected()
+        {
+            if (requestStopEvent.WaitOne(0))
+            {
+                return;
+            }
+
+            Dispatcher.Invoke(() => {
+                TextBlock_Status.Text = "已连接";
+                TextBlock_Status.Foreground = System.Windows.Media.Brushes.Green;
+            });
+        }
+
+        private void ShowDisconnected()
+        {
+            if (requestStopEvent.WaitOne(0))
+            {
+                return;
+            }
+
+            Dispatcher.Invoke(() => {
+                TextBlock_Status.Text = "未连接";
+                TextBlock_Status.Foreground = System.Windows.Media.Brushes.Red;
+            });
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

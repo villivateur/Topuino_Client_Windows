@@ -75,6 +75,7 @@ namespace Topuino_Client_Windows
                 if (pongBuff[0] == 0x68 && pongBuff[1] == 0x61)
                 {
                     portValid = true;
+                    portInitReceived.Set();
                 }
             }
         }
