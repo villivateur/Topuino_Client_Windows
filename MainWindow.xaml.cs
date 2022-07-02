@@ -71,8 +71,8 @@ namespace Topuino_Client_Windows
         private ManualResetEvent requestStopEvent = new ManualResetEvent(false);
         private ManualResetEvent stopDoneEvent = new ManualResetEvent(false);
 
-        private OnlineConnector? onlineClient = null;
-        private UsbConnector? usbClient = null;
+        private OnlineConnector? onlineConnector = null;
+        private UsbConnector? usbConnector = null;
 
         private void LoadConfig()
         {
@@ -214,16 +214,16 @@ namespace Topuino_Client_Windows
 
         private void UsbRun(MonitorData data)
         {
-            if (usbClient == null)
+            if (usbConnector == null)
             {
                 try
                 {
-                    usbClient = new UsbConnector();
+                    usbConnector = new UsbConnector();
                     ShowConnected();
                 }
                 catch
                 {
-                    usbClient = null;
+                    usbConnector = null;
                     ShowDisconnected();
                     return;
                 }
@@ -245,21 +245,21 @@ namespace Topuino_Client_Windows
 
             try
             {
-                usbClient.Send(bin);
+                usbConnector.Send(bin);
             }
             catch
             {
-                usbClient.Dispose();
-                usbClient = null;
+                usbConnector.Dispose();
+                usbConnector = null;
                 ShowDisconnected();
             }
         }
 
         private void OnlineRun(MonitorData data)
         {
-            if (onlineClient == null)
+            if (onlineConnector == null)
             {
-                onlineClient = new OnlineConnector();
+                onlineConnector = new OnlineConnector();
             }
 
             Dictionary<string, string> statusInfo = new Dictionary<string, string>();
@@ -275,13 +275,13 @@ namespace Topuino_Client_Windows
 
             try
             {
-                onlineClient.Post(statusInfo).Wait();
+                onlineConnector.Post(statusInfo).Wait();
                 ShowConnected();
             }
             catch
             {
-                onlineClient.Dispose();
-                onlineClient = null;
+                onlineConnector.Dispose();
+                onlineConnector = null;
                 ShowDisconnected();
             }
         }
@@ -368,8 +368,8 @@ namespace Topuino_Client_Windows
 
         private void ResetConnectors()
         {
-            usbClient?.Dispose();
-            onlineClient?.Dispose();
+            usbConnector?.Dispose();
+            onlineConnector?.Dispose();
         }
 
         private void Button_Save_Click(object sender, RoutedEventArgs e)
