@@ -62,6 +62,7 @@ namespace Topuino_Client_Windows
 
         private int mode = 0;
         private string sn = "";
+        private string ipAddr = "";
         private List<DriveInfo> allDrives;
         private DriveInfo drive0;
         private DriveInfo drive1;
@@ -73,6 +74,7 @@ namespace Topuino_Client_Windows
 
         private OnlineConnector? onlineConnector = null;
         private UsbConnector? usbConnector = null;
+        private LocalConnector? localConnector = null;
 
         private void LoadConfig()
         {
@@ -138,6 +140,7 @@ namespace Topuino_Client_Windows
                 }
 
                 TextBox_DeviceSn.Text = initConfig.sn;
+                TextBox_DeviceIp.Text = initConfig.ip;
             }
             catch
             {
@@ -288,7 +291,44 @@ namespace Topuino_Client_Windows
 
         private void LocalRun(MonitorData data)
         {
+            if (localConnector == null)
+            {
+                try
+                {
+                    localConnector = new LocalConnector(ipAddr);
+                    ShowConnected();
+                }
+                catch
+                {
+                    localConnector = null;
+                    ShowDisconnected();
+                    return;
+                }
+            }
+            int size = Marshal.SizeOf(data);
+            byte[] bin = new byte[size];
+            IntPtr ptr = IntPtr.Zero;
+            try
+            {
+                ptr = Marshal.AllocHGlobal(size);
+                Marshal.StructureToPtr(data, ptr, true);
+                Marshal.Copy(ptr, bin, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
 
+            try
+            {
+                localConnector.Send(bin);
+            }
+            catch
+            {
+                localConnector.Dispose();
+                localConnector = null;
+                ShowDisconnected();
+            }
         }
 
 
@@ -319,10 +359,13 @@ namespace Topuino_Client_Windows
                 {
                     mode = 2;
                 }
-                sn = TextBox_DeviceSn.Text;
 
                 drive0 = ComboBox_Disk0.SelectedItem as DriveInfo;
                 drive1 = ComboBox_Disk1.SelectedItem as DriveInfo;
+
+                sn = TextBox_DeviceSn.Text;
+
+                ipAddr = TextBox_DeviceIp.Text;
             }
             catch (Exception e)
             {
@@ -360,9 +403,10 @@ namespace Topuino_Client_Windows
         {
             Config newConfig = new Config();
             newConfig.mode = mode;
-            newConfig.sn = sn;
             newConfig.disk0 = drive0.Name;
             newConfig.disk1 = drive1.Name;
+            newConfig.sn = sn;
+            newConfig.ip = ipAddr;
             await File.WriteAllTextAsync("Config.json", JsonConvert.SerializeObject(newConfig, Formatting.Indented));
         }
 
@@ -370,6 +414,7 @@ namespace Topuino_Client_Windows
         {
             usbConnector?.Dispose();
             onlineConnector?.Dispose();
+            localConnector?.Dispose();
         }
 
         private void Button_Save_Click(object sender, RoutedEventArgs e)

@@ -6,24 +6,25 @@
         xmlns:local="clr-namespace:Topuino_Client_Windows"
         mc:Ignorable="d"
         Closing="Window_Closing"
-        Title="Topuino 客户端" Height="180" Width="400">
-    <Grid>
+        Title="Topuino 客户端" Height="270" Width="400">
+    <Grid Margin="5,0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
-            <Label Content="运行模式：" VerticalAlignment="Center" />
+            <Label Content="运行模式：" VerticalAlignment="Center" FontWeight="Bold" />
             <RadioButton x:Name="RadioButton_UsbMode" VerticalAlignment="Center" Margin="5,0" IsChecked="True">USB 模式</RadioButton>
             <RadioButton x:Name="RadioButton_OnlineMode" VerticalAlignment="Center" Margin="5,0">在线模式</RadioButton>
-            <RadioButton x:Name="RadioButton_LocalMode" VerticalAlignment="Center" Margin="5,0" IsEnabled="False">本地模式</RadioButton>
+            <RadioButton x:Name="RadioButton_LocalMode" VerticalAlignment="Center" Margin="5,0">本地模式</RadioButton>
         </StackPanel>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
-            <TextBlock Text="设备 SN：" VerticalAlignment="Center"/>
-            <TextBox x:Name="TextBox_DeviceSn" Width="80" VerticalAlignment="Center" />
-        </StackPanel>
+        <TextBlock Grid.Row="1" Text="通用配置：" FontSize="16" FontWeight="DemiBold" VerticalAlignment="Bottom" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
             <TextBlock Text="0 号磁盘：" VerticalAlignment="Center"/>
             <ComboBox x:Name="ComboBox_Disk0" Height="20" Width="60" VerticalAlignment="Center"/>
@@ -31,7 +32,17 @@
             <TextBlock Text="1 号磁盘：" VerticalAlignment="Center"/>
             <ComboBox x:Name="ComboBox_Disk1" Height="20" Width="60" VerticalAlignment="Center"/>
         </StackPanel>
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
+        <TextBlock Grid.Row="3" Text="在线模式配置：" FontSize="16" FontWeight="DemiBold" VerticalAlignment="Bottom" />
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
+            <TextBlock Text="设备 SN：" VerticalAlignment="Center"/>
+            <TextBox x:Name="TextBox_DeviceSn" Width="80" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Grid.Row="5" Text="本地模式配置：" FontSize="16" FontWeight="DemiBold" VerticalAlignment="Bottom" />
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
+            <TextBlock Text="IP 地址：" VerticalAlignment="Center"/>
+            <TextBox x:Name="TextBox_DeviceIp" Width="120" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
             <TextBlock Text="状态：" VerticalAlignment="Center"/>
             <TextBlock x:Name="TextBlock_Status" Text="未连接" Foreground="Red" VerticalAlignment="Center" />
             <Separator Width="10" Background="Transparent" />
